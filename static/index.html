@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тропа памяти: Последний Бой</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS для карты -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .leaflet-tile { filter: sepia(30%) contrast(105%) brightness(95%); }
+    .tank-track { stroke-dasharray: 8, 8; animation: dash 30s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -1000; } }
+  </style>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen font-sans">
+
+  <!-- Навигационная панель -->
+  <header class="border-b border-stone-800 bg-stone-950/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl">⭐</span>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-amber-500">Тропа памяти: Последний Бой</h1>
+          <p class="text-xs text-stone-400">Геоинформационная система и архивный поиск (Орловская обл.)</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800">
+          ● Core API Online
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Левая колонка: Карта и Семейный маршрут -->
+    <section class="lg:col-span-7 space-y-6">
+      
+      <!-- Карточка с картой -->
+      <div class="bg-stone-950 border border-stone-800 rounded-xl overflow-hidden shadow-xl">
+        <div class="p-3 bg-stone-900/60 border-b border-stone-800 flex justify-between items-center">
+          <div class="flex items-center space-x-2">
+            <span class="text-amber-500 font-semibold text-sm">📍 Интерактивный рубеж обороны</span>
+          </div>
+          <button id="btn-build-route" onclick="loadRoute()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-stone-950 font-semibold text-xs rounded transition">
+            Построить маршрут квеста (3 км)
+          </button>
+        </div>
+        <div id="map" class="h-80 w-full bg-stone-900"></div>
+        <div class="p-3 bg-stone-900/40 text-xs text-stone-400 flex justify-between">
+          <span>Слой: Оборона 5-го ВДК (октябрь 1941 г.)</span>
+          <span id="route-info">Маршрут не построен</span>
+        </div>
+      </div>
+
+      <!-- Модуль квеста: Штабная радиограмма -->
+      <div class="bg-stone-950 border border-stone-800 rounded-xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-amber-400 flex items-center space-x-2">
+            <span>📟</span> <span>Задание: «Штабная шифровка»</span>
+          </h2>
+          <span class="text-xs bg-stone-800 px-2 py-0.5 rounded text-stone-300">Точка №1</span>
+        </div>
+
+        <div id="quest-card" class="bg-stone-900 border border-stone-800/80 rounded-lg p-4 space-y-3">
+          <p id="quest-story" class="text-sm text-stone-300 leading-relaxed">Загрузка боевого донесения...</p>
+          <div class="bg-stone-950 p-3 rounded border border-amber-900/40">
+            <div class="text-xs text-amber-600 uppercase font-semibold mb-1">Перехваченная радиограмма:</div>
+            <div id="quest-cipher" class="font-mono text-base tracking-widest text-amber-400 font-bold">...</div>
+          </div>
+          <p id="quest-hint" class="text-xs text-stone-400 italic">💡 Подсказка: ...</p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-stone-300">Расшифровка текста отряда:</label>
+          <div class="flex space-x-2">
+            <input id="user-answer-input" type="text" placeholder="Введите расшифрованное донесение..." 
+                   class="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-100 focus:outline-none focus:border-amber-500">
+            <button onclick="submitQuestAnswer()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm rounded-lg text-white transition">
+              Проверить
+            </button>
+          </div>
+          <div id="quest-feedback" class="hidden text-xs p-2.5 rounded-lg"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Правая колонка: Архивный поиск и «Последний бой» -->
+    <section class="lg:col-span-5 space-y-6">
+
+      <!-- Блок 1: Архивный поиск («Книга Памяти») -->
+      <div class="bg-stone-950 border border-stone-800 rounded-xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-amber-400 flex items-center space-x-2">
+            <span>📖</span> <span>Архивный нечеткий поиск</span>
+          </h2>
+          <span class="text-xs text-stone-500">RapidFuzz Engine</span>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex space-x-2">
+            <input id="search-query" type="text" value="Ивонов Иван 1943 Крупышино" 
+                   placeholder="ФИО, год, населенный пункт..."
+                   class="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-100 focus:outline-none focus:border-amber-500">
+            <button onclick="performSearch()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 font-semibold text-sm rounded-lg transition">
+              Найти
+            </button>
+          </div>
+          <p class="text-xs text-stone-500">Попробуйте ввести с опечатками: «Ивонов Крупышино 43»</p>
+        </div>
+
+        <!-- Контейнер результатов поиска -->
+        <div id="search-results" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <div class="text-xs text-stone-500 text-center py-4">Нажмите «Найти» для сверки с Книгой Памяти</div>
+        </div>
+      </div>
+
+      <!-- Блок 2: Форма заявки «Последний бой» -->
+      <div class="bg-stone-950 border border-stone-800 rounded-xl p-5 shadow-xl space-y-4">
+        <h2 class="font-bold text-red-400 flex items-center space-x-2">
+          <span>🚩</span> <span>Заявка в штаб: «Последний бой»</span>
+        </h2>
+        <p class="text-xs text-stone-400">
+          Фиксация координат неподтвержденных мест гибели красноармейцев для выезда поискового отряда.
+        </p>
+
+        <form id="last-battle-form" onsubmit="submitLastBattle(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs text-stone-400 mb-1">ФИО бойца или данные медальона:</label>
+            <input id="lb-name" required type="text" value="Красноармеец Иванов И.И."
+                   class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-1.5 text-sm text-stone-100 focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs text-stone-400 mb-1">Обстоятельства и привязка к местности:</label>
+            <input id="lb-desc" required type="text" value="Овраг у д. Крупышино, Книга Памяти Т. 5"
+                   class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-1.5 text-sm text-stone-100 focus:outline-none focus:border-red-500">
+          </div>
+          <button type="submit" class="w-full py-2 bg-red-800 hover:bg-red-700 text-stone-100 font-semibold text-xs rounded-lg uppercase tracking-wider transition">
+            Передать координаты отрядам (Радиус 20 км)
+          </button>
+        </form>
+        <div id="lb-feedback" class="hidden text-xs p-2.5 rounded-lg"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // 1. Инициализация карты Leaflet (Орел и рубежи обороны)
+    const map = L.map('map').setView([52.968, 36.070], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let routeLayer = null;
+
+    // 2. Загрузка маршрута с бэкенда
+    async function loadRoute() {
+      try {
+        const res = await fetch('/api/v1/routes/build', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ start_lat: 52.965, start_lon: 36.068, target_distance_km: 3.0, target_time_minutes: 45 })
+        });
+        const data = await res.json();
+
+        if (routeLayer) map.removeLayer(routeLayer);
+
+        routeLayer = L.geoJSON(data.geojson, {
+          style: function (feature) {
+            if (feature.geometry.type === "LineString") {
+              return { color: "#ea580c", weight: 4, className: "tank-track" };
+            }
+          },
+          pointToLayer: function (feature, latlng) {
+            const iconMarker = L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: feature.properties.icon === 'helmet' ? '#10b981' : '#f59e0b',
+              color: '#ffffff',
+              weight: 2,
+              fillOpacity: 0.9
+            });
+            iconMarker.bindPopup(`<b>${feature.properties.title}</b>`);
+            return iconMarker;
+          }
+        }).addTo(map);
+
+        map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+        document.getElementById('route-info').innerText = `Дистанция: ${data.total_distance_km} км (~${data.estimated_time_min} мин)`;
+      } catch (err) {
+        alert("Ошибка загрузки маршрута: " + err);
+      }
+    }
+
+    // 3. Загрузка задания квеста
+    async function loadQuest() {
+      try {
+        const res = await fetch('/api/v1/quest/1');
+        const data = await res.json();
+        document.getElementById('quest-story').innerText = data.story;
+        document.getElementById('quest-cipher').innerText = data.encrypted_dispatch;
+        document.getElementById('quest-hint').innerText = "💡 " + data.riddle_hint;
+      } catch (err) {
+        console.error("Ошибка загрузки квеста", err);
+      }
+    }
+
+    // 4. Проверка ответа квеста
+    async function submitQuestAnswer() {
+      const answer = document.getElementById('user-answer-input').value;
+      const feedback = document.getElementById('quest-feedback');
+      feedback.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/v1/quest/verify', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ point_id: 1, user_answer: answer })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          feedback.className = "text-xs p-2.5 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300";
+          feedback.innerHTML = `✅ <b>${data.message}</b> Точность: ${data.score}%. Начислено: +${data.bonus_points} баллов.`;
+        } else {
+          feedback.className = "text-xs p-2.5 rounded-lg bg-red-950 border border-red-800 text-red-300";
+          feedback.innerHTML = `❌ ${data.detail || "Расшифровка неверна, попробуйте еще раз."}`;
+        }
+      } catch (err) {
+        feedback.className = "text-xs p-2.5 rounded-lg bg-red-950 border border-red-800 text-red-300";
+        feedback.innerText = "Ошибка соединения с сервером.";
+      }
+    }
+
+    // 5. Нечеткий поиск бойцов
+    async function performSearch() {
+      const query = document.getElementById('search-query').value;
+      const container = document.getElementById('search-results');
+      container.innerHTML = `<div class="text-xs text-stone-400 py-2">Сверка с архивными списками...</div>`;
+
+      try {
+        const res = await fetch('/api/v1/search/soldier', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ query: query, threshold: 45.0 })
+        });
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+          container.innerHTML = `<div class="text-xs text-stone-500 py-3">Совпадений не найдено.</div>`;
+          return;
+        }
+
+        container.innerHTML = "";
+        data.results.forEach(item => {
+          const s = item.soldier;
+          const isHigh = item.confidence >= 70;
+          const badgeClass = isHigh ? "bg-emerald-900/60 text-emerald-300 border-emerald-700" : "bg-amber-900/60 text-amber-300 border-amber-700";
+
+          const card = document.createElement('div');
+          card.className = "p-3 rounded-lg bg-stone-900 border border-stone-800 space-y-1";
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <span class="font-bold text-sm text-stone-200">${s.last_name} ${s.first_name} ${s.middle_name}</span>
+              <span class="text-xs px-2 py-0.5 rounded border font-mono ${badgeClass}">${item.confidence}%</span>
+            </div>
+            <div class="text-xs text-stone-400">${s.unit}</div>
+            <div class="text-xs text-stone-500 flex justify-between pt-1">
+              <span>📍 ${s.location} (${s.year} г.)</span>
+              <span class="italic">${item.verification_status}</span>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        container.innerHTML = `<div class="text-xs text-red-400 py-2">Ошибка поиска: ${err}</div>`;
+      }
+    }
+
+    // 6. Отправка заявки «Последний бой»
+    async function submitLastBattle(e) {
+      e.preventDefault();
+      const feedback = document.getElementById('lb-feedback');
+      feedback.classList.remove('hidden');
+
+      const payload = {
+        lat: 52.684,
+        lon: 35.762,
+        soldier_name: document.getElementById('lb-name').value,
+        death_circumstances: document.getElementById('lb-desc').value,
+        status: "Обнаружено место"
+      };
+
+      try {
+        const res = await fetch('/api/v1/last-battle', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        feedback.className = "text-xs p-2.5 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300";
+        feedback.innerHTML = `✅ <b>Заявка #${data.report_id} принята!</b><br>${data.message}`;
+      } catch (err) {
+        feedback.className = "text-xs p-2.5 rounded-lg bg-red-950 border border-red-800 text-red-300";
+        feedback.innerText = "Ошибка отправки заявки.";
+      }
+    }
+
+    // Инициализация при загрузке страницы
+    loadQuest();
+    loadRoute();
+  </script>
+</body>
+</html>
